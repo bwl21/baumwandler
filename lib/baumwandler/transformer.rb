@@ -252,6 +252,19 @@ module Baumwandler
     # @return [type] [description]
     def transform(node)
       # find downrule
+      #
+
+      process_results=proc{|rule, result, node|
+        case rule.get_mode
+        when :insert
+          node.set!(result)
+        when :add
+          node.setlast!(result)
+        else
+          raise "unsupported rule mode #{rule.get_mode}"
+        end
+      }
+
       rule=_find_rule(node, :down)
 
       # evaluate rule
@@ -263,14 +276,8 @@ module Baumwandler
       }
 
       # process the results
-      case rule.get_mode
-      when :insert
-        node.set!(result)
-      when :add
-        node.setlast!(result)
-      else
-        raise "unsupported rule mode #{rule.get_mode}"
-      end
+
+      process_results.call(rule, result, node)
 
       # find uprule
       rule = _find_rule(node, :up)
@@ -280,14 +287,7 @@ module Baumwandler
         result = [rule.get_body.call(node)].flatten
 
         # evaluate rule
-        case rule.get_mode
-        when :insert
-          node.set!(result)
-        when :add
-          node.setlast!(result)
-        else
-          raise "unsupported rule mode #{rule.get_mode}"
-        end
+        process_results.call(rule, result, node)
       end
 
       node

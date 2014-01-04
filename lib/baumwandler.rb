@@ -1,5 +1,8 @@
 require "baumwandler/version"
 
-module Baumwandler
-  # Your code goes here...
-end
+require "baumwandler/node"
+
+require "baumwandler/transformer"
+
+require "baumwandler/producer"
+

@@ -140,6 +140,7 @@ module Baumwandler
     def left
       r = nil
       r = [@left, @left.left].flatten.compact if @left
+      r
     end
 
     #
@@ -149,6 +150,7 @@ module Baumwandler
     def right
       r = nil
       r = [@right, @right.right].flatten.compact if @right
+      r
     end
 
 
