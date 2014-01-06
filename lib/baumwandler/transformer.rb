@@ -1,9 +1,5 @@
 require 'baumwandler'
 
-
-
-
-
 #
 # This module contains all the baumwandler stuff
 #
@@ -18,67 +14,111 @@ module Baumwandler
   #
   # @author [beweiche]
   #
-  module Predecessor
-
+  module Object
 
     #
     # This clones an object and maintains the
-    # predecessor links
+    # node links
     #
-    # Note that this is not a deep clone!
+    # Note that this is a deep clone!
+    # This is likely to be redefined for
+    # Impelmentation of non terminal nodes
     #
-    # @return [type] [description]
+    # @return [Object] [The cloned object]
     def _bwclone
       self.clone._bwfrom(self)
     end
 
+    # todo: handle Block
+    # todo: manage conversion to a node if properties are specified
+    def _bwprops(gid = nil, attributes = nil, &block)
+      if self.gid
+        result = self.node(gid || self.gid, attributes||self.attributes, &block)._bwfrom(self)
+      else
+        result=self.clone rescue self
+      end
+      result
+    end
 
     #
     # Ths sets the predecessor link
-    # @param  object [Object] The predecessor object
+    # @param  object [Object] The node linked object
     #
     # @return [Object] The object itself to allow chaining
     def _bwfrom(object)
-      @decorated = object
-      return self
+      @_bw_link = object
+      self
     end
-
 
     #
     # This yields the predecessor object
     #
-    # @return [Object] The predecessor object
+    # @return [Object] The  node linked object
     def _bwp
-      @decorated
+      @_bw_link
     end
-
 
     #
     # This yiels a list of all predecessor objects
     #
-    # @return [Array] The list of predecessor objects
+    # @return [Array] The list of node linked objects
     def _bwa
       p = _bwp
       a = p._bwa if p
       [p, a].flatten.compact
     end
 
-
-
     #
-    # This yields the root of predecessor objects
+    # This yields the root of node linked objects
+    # mainly the node in the "source tree"
     #
-    # @return [Object] The root predecessor
+    # @return [Object] The root node link
     def _bwr
       _bwa[-1]
     end
+
+    #
+    # This yields nil unless superseeded by a paticular implementation
+    # todo: this ensures, that the the routines in transformer also work
+    # for non baumwandler Nodes
+    def gid
+      nil
+    end
+
+
+    def _bw?
+      if respond_to? :empty?
+        return self unless empty?
+        return nil
+      end
+      return self
+    end
+
+
+
+    # included Attributes as getter and setter
+
+    def _bw_parent=(node)
+      @_bw_parent=node
+    end
+
+    def _bw_parent
+      @_bw_parent
+    end
+
+    def _bw_rank=(rank)
+      @_bw_rank=rank
+    end
+
+    def _bw_rank
+      @_bw_rank
+    end
+
   end
 
   class Transformer
 
     @rules = {}
-
-
 
     #
     # This class represents one particular rule
@@ -209,6 +249,10 @@ module Baumwandler
         @mode
       end
 
+      def get_subjects
+        @subjects
+      end
+
     end
 
 
@@ -261,33 +305,36 @@ module Baumwandler
         when :add
           node.setlast!(result)
         else
-          raise "unsupported rule mode #{rule.get_mode}"
+          raise "unsupported rule mode: #{rule.get_mode}"
         end
       }
 
       rule=_find_rule(node, :down)
+      #require 'pry';binding.pry
+      puts "#{node.gid}(#{rule.get_subjects}): #{rule.get_direction}, #{rule.get_mode})"
 
-      # evaluate rule
-      result = [rule.get_body.call(node)].flatten
+      # evaluate downrule
+      result = [rule.get_body.call(node)].flatten#.map{|n| n._bwclone}
+      #require 'pry';binding.pry
+      # process the results
+      process_results.call(rule, result, node)
 
       #transform the result
-      result.select{|n|n.class==node.class}.each{|node|
+      node.contents.select{|n|n.class==node.class}.each{|node|
+        #puts "#{node.gid}:"
+        #require 'pry';binding.pry
         transform(node)
       }
-
-      # process the results
-
-      process_results.call(rule, result, node)
 
       # find uprule
       rule = _find_rule(node, :up)
 
       if rule
-        # evaluate rule
-        result = [rule.get_body.call(node)].flatten
+        # evaluate uprule
+        result = [rule.get_body.call(node)].flatten#.map{|n| n._bwclone}
 
-        # evaluate rule
-        process_results.call(rule, result, node)
+        # process rule
+        [process_results.call(rule, result, node)].flatten
       end
 
       node
@@ -299,7 +346,7 @@ module Baumwandler
     private
 
     def _find_rule(node, direction)
-      (@rules[node.gid]||@rules[:"!default"]).select{|i|
+      r=([@rules[node.gid], @rules[:"!default"]].flatten.compact).select{|i|
         i.get_direction == direction
       }.select{|i|
         predicate=i.get_predicate
@@ -308,7 +355,8 @@ module Baumwandler
           result=predicate.call(node)
         end
         result
-      }.first
+      }
+      r.first
     end
 
   end
@@ -321,5 +369,6 @@ end
 # @author [beweiche]
 #
 class Object
-  include Baumwandler::Predecessor
+  include Baumwandler::Object
 end
+

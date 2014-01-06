@@ -1,26 +1,17 @@
 module Baumwandler
 
-
   #
   # This is an example implementation of the Baumwandler node interface
   #
   # It implements the minimum set of methods required by Baumwandler::Transformer
   #
   # todo: clarify handling of non Baumwandler objects
+  # todo: remove attributes: left, right, this 
   #
   # @author [beweiche]
   #
   class Node
-    attr_accessor :gid, :key, :contents, :type, :parent, :left, :right, :attributes
-    @gid = nil
-    @attributes = nil
-    @contents = nil
-    @left = nil
-    @right = nil
-    @type = :node
-    @p = nil
-    @parent=nil
-
+    attr_accessor :gid, :contents, :type, :parent, :attributes
 
     #
     # This retrieves a particluar attribute
@@ -107,7 +98,6 @@ module Baumwandler
       self
     end
 
-
     #
     # This alters the entire node.
     #
@@ -137,22 +127,21 @@ module Baumwandler
     # Provide the left siblings of a given node
     #
     # @return [Array] The list of left siblings
-    def left
-      r = nil
-      r = [@left, @left.left].flatten.compact if @left
-      r
+    def previous
+      r = nil 
+      r = _bw_parent.contents[0 .. self._bw_rank - 1].reverse if _bw_parent
+      [r].flatten.compact
     end
 
     #
-    # [right description]
+    # Provide the next siblings of a given node
     #
     # @return [Array] The list of right siblings
-    def right
+    def next
       r = nil
-      r = [@right, @right.right].flatten.compact if @right
-      r
+      r = _bw_parent.contents[self._bw_rank + 1 .. -1] if _bw_parent
+      [r].flatten.compact
     end
-
 
     #
     # Yield the current node as xml.
@@ -161,22 +150,70 @@ module Baumwandler
     # @param  indent="" [String] The initial indentation used to derive indentation from recursion
     #
     # @return [String] The node as xml
-    def to_xml(indent="")
+    def to_xml(indent="", options={mode: :default})
       attlist=attributes.map{|k,v| "#{k}=\"#{v}\""}.unshift("").join(" ")
+      pre = ""
+      pre = "<!-- $#{object_id} (#{[_bwa].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
+
       [
-        "\n#{indent}<#{gid}#{attlist}>",
+        "\n#{indent}<#{gid}#{attlist}>#{pre}",
         contents.map{|c|
           if c.respond_to? :to_xml
-            c.to_xml(indent+"  ")
+            c.to_xml(indent+"  ", options)
           else
             c
           end
         },
-        ("\n#{indent}" if left || (not parent)),
+        ("\n#{indent}" if previous || (not _bw_parent)),
         "</#{gid}>"
       ].join
     end
 
+
+    # 
+    # This yields a string representation for debugging purposes
+    # 
+    # @return [String] The string representation
+    def to_s
+      to_xml("", mode: :debug)
+    end
+
+
+## intended for baumwandler internal purposes
+
+    # This clones a node. Note that it is 
+    # **not** a deep clone. As in the context
+    # of Baumwandler, a node is cloned iteravely.
+    # 
+    # This overrides the default definition given in
+    # transformer.rb
+    #  
+    # It takes the gid and the
+    # attributes but not the content.
+    # 
+    # It also maintains the Predecessor link
+    # 
+    # @return [Node] The object itself
+   # def _bwclone
+   #   p=self._get_bwfrom || self
+   #   self.node(gid, attributes)._bwfrom(p)
+   # end
+
+    # 
+    # This injects a Predecessor link
+    # 
+    # @param  node [object] The object representing the predecessor 
+    # 
+    # @return [Node] The object itself
+    def _set_bwfrom(node)
+      @bwfrom=node
+      self
+    end
+
+
+    def _get_bwfrom
+      @bwfrom
+    end
 
     private
 
@@ -185,12 +222,9 @@ module Baumwandler
     end
 
     def _treesync
-      l=nil
-      @contents.each{|i|
-        i.left=l if i.class==self.class
-        l.right=i if l.class==self.class
-        i.parent=self if i.class==self.class
-        l=i if i.class==self.class
+      @contents.each_with_index{|node, index|
+        node._bw_rank = index
+        node._bw_parent = self
       }
     end
 
@@ -198,12 +232,10 @@ module Baumwandler
       @gid = gid
       @attributes = attributes
       @type = type
-      @parent=nil
-      @contents=[]
+      @parent   = nil
+      @contents = []
       set_block!(&block) if block_given?
       nil
     end
-
-  end
-
-end
+  end # class
+end  # module

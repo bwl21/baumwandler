@@ -50,79 +50,121 @@ end
 describe "Baumwandler::Tranformer.transform", exp:false do
 
   before :all do
-    @bw=Baumwandler::Node
-    @e=Baumwandler::Transformer.new
+    @bw=Baumwandler::Node # to be used as node factory
+    @e=Baumwandler::Transformer.new # the first engine
+    @e2=Baumwandler::Transformer.new # the second engine
 
     @e.rule(:CHAPTER).body do |my_chapter|
-      # chapter contents is right siblings of which first left :h1 sibling corresponds the current chapter
-      # :h1 :p :p :p :h1 :p :p -> :CHAPTER(<-:h1){:P  :P :P} :CHAPTER()
-      cc= my_chapter._bwp.right.select{|i|
-        i.left.select{|i| i.gid == :h1 }.first == my_chapter._bwp
-      }.map{|my_p| @bw.node(:P)._bwfrom(my_p)}
+      cc= my_chapter._bwp.next.take_while{|i|
+      	i.gid != my_chapter._bwp.gid
+      }.map{|my_p| my_p._bwprops(:P)}
 
       a=[
-        my_chapter.node(:"LONG-NAME"){|n|
+        @bw.node(:"LONG-NAME"){|n|
           @bw.node(:"L-5", L:"DE"){
-          my_chapter._bwp.contents}
+          my_chapter._bwp.contents.map{|i| i._bwprops}}
         },
         cc
-      ].flatten.compact
+      ].flatten
       a
     end
 
+
+#todo: make this a !setfirst rule
     @e.rule(:CHAPTER).up.insert.body{|my_chapter|
-      [
+      r=[
         my_chapter.contents.first,
         @e.transform(@bw.node(:P){"This chapter has #{my_chapter.contents.count} children"}),
         my_chapter.contents[1..-1]
       ]
     }
 
-    @e.rule(:P).body do |my_p|
-      @bw.node(:"L-1", L:"DE"){
-        (my_p._bwp || my_p).contents
+    @e.rule(:P).body do |this|
+      a=@bw.node(:"L-1", L:"DE"){
+        r=["(parent id #{this.parent.object_id})",
+           this.contents._bw? || this._bwp.contents.map{|i|i._bwprops}
+           ].flatten
+        r
       }
+      a
     end
 
     @e.rule(:DOCUMENT).body do |this|
-      this._bwp.contents.select{|i| i.gid == :h1}
-      .map{|i| @bw.node(:"CHAPTER")._bwfrom(i)}
+      a=this._bwp.contents.select{|i| i.gid == :h1}
+      .map{|i| i._bwprops(:CHAPTER)}
+      a
+    end
+
+
+    @e.rule(:hugo).body do |this|
+      ["{added by rule :hugo}", (this._bwp || this).contents]
     end
 
     @e.rule(:"!default").add.body do |this|
-      r=this._bwp.contents if this.contents.first && this._bwp
+      r=[]
+      r=this._bwp.contents.map{|i|i._bwprops} if this._bwp
+      r
     end
 
-  end
+    @e2.rule(:"!default").add.body do |this|
+      r=[]
+      r=this._bwp.contents.map{|i|i._bwprops} if this._bwp
+      r
+    end
 
-  it "creates nested chapters" do
-    n=Baumwandler::Node
-    source=n.node(:source){|a|
+    @source=@bw.node(:source){|a|
       [
-        n.node(:h1){"das ist überschrift 1"},
-        n.node(:p){"der erste paragraph"},
-        n.node(:p){"der zweite paragraph"},
-        n.node(:p){"der dritte paragraph"},
-        n.node(:h1){"das ist kapitel 2"},
-        n.node(:p){"der vierte paragraph"},
-        n.node(:p){"der fünfte paragraph"},
-        n.node(:p){"der sechste paragraph"}
+        @bw.node(:h1){["das ist überschrift 1",@bw.node(:hugo){"inhalt hugo"}]},
+        @bw.node(:p){"der erste paragraph"},
+        @bw.node(:p){"der zweite paragraph"},
+        @bw.node(:p){"der dritte paragraph"},
+        @bw.node(:h1){"das ist kapitel 2"},
+        @bw.node(:p){"der vierte paragraph"},
+        @bw.node(:p){"der fünfte paragraph"},
+        @bw.node(:p){["der sechste paragraph"]},
+        @bw.node(:h1){"das ist kapitel 3"},
+
     ]}
 
-    document = n.node(:DOCUMENT)._bwfrom(source) # yields {chapter:][]}
-    @e.transform(document)
+    @source_ref=@source.to_s
 
-    document.contents.first.gid.should==:"CHAPTER"
+    @target1 = @bw.node(:DOCUMENT)._bwfrom(@source) # yields {chapter:][]}
+    @e.transform(@target1)
+    @target2 = @bw.node(:DOCUMENT)._bwfrom(@target1)
+    @e2.transform(@target2)
   end
+
+  it "performs transformation of nodes" do
+  	puts @source.to_s
+    puts @target1.to_s
+    @target1.contents.first.gid.should==:"CHAPTER"
+    expected=@source.contents[3].contents.first
+    @target1.contents.first.contents[-1].contents.first.contents[-1].should==expected
+  end
+
+  it "can wrap elements around text" do
+    expected=@source.contents[3].contents.first
+    @target1.contents.first.contents[-1].contents.first.contents[-1].should==expected
+  end
+
+  it "does not touch the source " do
+    @source.to_s.should == @source_ref
+  end
+
+  it "duplicates a tree by default" do
+  	puts @target2.to_s
+  	@target2.to_xml.should == @target1.to_xml
+  end
+
 
 end
 
 
-describe "Baumwandler::Predecessor", exp:false do
+describe "Baumwandler::Object", exp:false do
 
   before :all do
     class Object
-      include Baumwandler::Predecessor
+      include Baumwandler::Object
     end
   end
 
@@ -135,18 +177,19 @@ describe "Baumwandler::Predecessor", exp:false do
 
 
     #we clone and establish link later
-    cloned_root=root.clone
+    cloned_root = root.clone
     cloned_root._bwfrom(root)
 
     #we clone by baumwandler
-    direct_clone=cloned_root._bwclone
+    cloned_clone = cloned_root._bwclone
 
-    first._bwp.should==root
-    second._bwp._bwp.should==root
-    second._bwr.should==root
-    direct_clone._bwa.should==[cloned_root,root]
-    number._bwp.should==root
+    first._bwp.should == root
+    second._bwp._bwp.should == root
+    second._bwr.should == root
+    cloned_root._bwp.should == root
 
+    cloned_clone._bwa.should == [cloned_root, root]
+    number._bwp.should == root
   end
 end
 

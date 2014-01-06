@@ -55,7 +55,7 @@ describe Baumwandler::Node, exp:true do
       n.node(:e)
      ]
     }
-    a.contents.first.right.map{|n|n.gid}.should==[:c, :d, :e]
-    a.contents[-1].left.map{|n|n.gid}.should==[:d, :c, :b]
+    a.contents.first.next.map{|n|n.gid}.compact.should==[:c, :d, :e]
+    a.contents[-1].previous.map{|n|n.gid}.compact.should==[:d, :c, :b]
   end
 end
