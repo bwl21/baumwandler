@@ -6,7 +6,7 @@ module Baumwandler
   # It implements the minimum set of methods required by Baumwandler::Transformer
   #
   # todo: clarify handling of non Baumwandler objects
-  # todo: remove attributes: left, right, this 
+  # todo: remove attributes: left, right, this
   #
   # @author [beweiche]
   #
@@ -56,7 +56,8 @@ module Baumwandler
     #
     # @return [node] The node itself to allow chaining
     def setlast!(contents)
-      @contents.push *(contents)
+      pcontents = _prepare_content(contents)
+      @contents.push *(pcontents)
       _treesync
       self
     end
@@ -68,7 +69,8 @@ module Baumwandler
     #
     # @return [node] The node itself to allow chaining
     def setfirst!(contents)
-      @contents.unshift *(contents)
+      pcontents = _prepare_content(contents)
+      @contents.unshift *(pcontents)
       _treesync
       self
     end
@@ -80,7 +82,7 @@ module Baumwandler
     #
     # @return [node] The node itself to allow chaining
     def set_block!(&block)
-      set!(_prepare(block))
+      set!(_prepare_block(block))
       self
     end
 
@@ -93,7 +95,8 @@ module Baumwandler
     #
     # @return [node] The node itself to allow chaining
     def set!(contents)
-      @contents = contents
+      pcontents = _prepare_content(contents)
+      @contents = pcontents
       _treesync
       self
     end
@@ -128,7 +131,7 @@ module Baumwandler
     #
     # @return [Array] The list of left siblings
     def previous
-      r = nil 
+      r = nil
       r = _bw_parent.contents[0 .. self._bw_rank - 1].reverse if _bw_parent
       [r].flatten.compact
     end
@@ -154,7 +157,6 @@ module Baumwandler
       attlist=attributes.map{|k,v| "#{k}=\"#{v}\""}.unshift("").join(" ")
       pre = ""
       pre = "<!-- $#{object_id} (#{[_bwa].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
-
       [
         "\n#{indent}<#{gid}#{attlist}>#{pre}",
         contents.map{|c|
@@ -164,61 +166,72 @@ module Baumwandler
             c
           end
         },
-        ("\n#{indent}" if previous || (not _bw_parent)),
+        #("\n#{indent} #{previous.first.gid}: " if previous.first.gid),
         "</#{gid}>"
       ].join
     end
 
 
-    # 
+    #
     # This yields a string representation for debugging purposes
-    # 
+    #
     # @return [String] The string representation
     def to_s
       to_xml("", mode: :debug)
     end
 
 
-## intended for baumwandler internal purposes
+    ## intended for baumwandler internal purposes
 
-    # This clones a node. Note that it is 
+    # This clones a node. Note that it is
     # **not** a deep clone. As in the context
     # of Baumwandler, a node is cloned iteravely.
-    # 
+    #
     # This overrides the default definition given in
     # transformer.rb
-    #  
+    #
     # It takes the gid and the
     # attributes but not the content.
-    # 
+    #
     # It also maintains the Predecessor link
-    # 
+    #
     # @return [Node] The object itself
-   # def _bwclone
-   #   p=self._get_bwfrom || self
-   #   self.node(gid, attributes)._bwfrom(p)
-   # end
+    # def _bwclone
+    #   p=self._get_bwfrom || self
+    #   self.node(gid, attributes)._bwfrom(p)
+    # end
 
-    # 
+    #
     # This injects a Predecessor link
-    # 
-    # @param  node [object] The object representing the predecessor 
-    # 
+    #
+    # @param  node [object] The object representing the predecessor
+    #
     # @return [Node] The object itself
-    def _set_bwfrom(node)
-      @bwfrom=node
-      self
-    end
+    # def _set_bwfrom(node)
+    #   @bwfrom=node
+    #   self
+    # end
 
 
-    def _get_bwfrom
-      @bwfrom
-    end
+    # def _get_bwfrom
+    #   @bwfrom
+    # end
 
     private
 
-    def _prepare(block)
+    def _prepare_block(block)
       n=[block.call(self)].flatten.compact
+    end
+
+    def _prepare_content(contents)
+      contents.map{|n|
+        if n._bw_parent && n.gid
+          r=n._bwprops
+        else
+          r=n
+        end
+        r
+      }
     end
 
     def _treesync

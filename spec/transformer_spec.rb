@@ -62,27 +62,29 @@ describe "Baumwandler::Tranformer.transform", exp:false do
       a=[
         @bw.node(:"LONG-NAME"){|n|
           @bw.node(:"L-5", L:"DE"){
-          my_chapter._bwp.contents.map{|i| i._bwprops}}
+          my_chapter._bwp.contents #.map{|i| i._bwprops}
+         }
         },
+        @bw.node(:"P"),
+
         cc
       ].flatten
       a
     end
 
 
-#todo: make this a !setfirst rule
-    @e.rule(:CHAPTER).up.insert.body{|my_chapter|
+
+    # this demonstrates a destrucive manipulation
+    @e.rule(:CHAPTER).up.discard.body{|my_chapter|
       r=[
-        my_chapter.contents.first,
-        @e.transform(@bw.node(:P){"This chapter has #{my_chapter.contents.count} children"}),
-        my_chapter.contents[1..-1]
+      	my_chapter.contents[1].contents.first.set!(["we have #{my_chapter.contents.count} children"])
       ]
     }
 
     @e.rule(:P).body do |this|
       a=@bw.node(:"L-1", L:"DE"){
         r=["(parent id #{this.parent.object_id})",
-           this.contents._bw? || this._bwp.contents.map{|i|i._bwprops}
+           this.contents._bw? || this._bwp && this._bwp.contents
            ].flatten
         r
       }
@@ -102,13 +104,15 @@ describe "Baumwandler::Tranformer.transform", exp:false do
 
     @e.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bwp.contents.map{|i|i._bwprops} if this._bwp
+      r=this._bwp.contents if this._bwp
+      #.map{|i|i._bwprops} if this._bwp
       r
     end
 
     @e2.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bwp.contents.map{|i|i._bwprops} if this._bwp
+      r=this._bwp.contents if this._bwp
+      #.map{|i|i._bwprops} if this._bwp
       r
     end
 
@@ -129,14 +133,18 @@ describe "Baumwandler::Tranformer.transform", exp:false do
     @source_ref=@source.to_s
 
     @target1 = @bw.node(:DOCUMENT)._bwfrom(@source) # yields {chapter:][]}
+      	#puts "before first transformation", @source.to_s
+
     @e.transform(@target1)
+      	#puts "after first transformation", @source.to_s, @target1.to_s
     @target2 = @bw.node(:DOCUMENT)._bwfrom(@target1)
     @e2.transform(@target2)
   end
 
   it "performs transformation of nodes" do
-  	puts @source.to_s
-    puts @target1.to_s
+    #puts @target1.to_s
+    #puts @source.to_s
+
     @target1.contents.first.gid.should==:"CHAPTER"
     expected=@source.contents[3].contents.first
     @target1.contents.first.contents[-1].contents.first.contents[-1].should==expected
@@ -155,6 +163,12 @@ describe "Baumwandler::Tranformer.transform", exp:false do
   	puts @target2.to_s
   	@target2.to_xml.should == @target1.to_xml
   end
+
+  it "counts Baumwandler nodes" do
+  	o = ObjectSpace.each_object(Baumwandler::Node)
+  	puts o.count
+  end
+
 
 
 end

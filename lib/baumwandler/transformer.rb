@@ -86,6 +86,13 @@ module Baumwandler
     end
 
 
+    # 
+    # This indicates if the result of a query
+    # is empty. This allows statements lik
+    # 
+    # if contents._bw? ...
+    # 
+    # @return [type] [description]
     def _bw?
       if respond_to? :empty?
         return self unless empty?
@@ -126,13 +133,14 @@ module Baumwandler
     # @author [beweiche]
     #
     class Rule
-      def initialize(subjects)
+      def initialize(subjects, engine)
         @subjects   = subjects
         @body      = nil
         @predicate = lambda{|i| true}
         @body      = lambda{|i| nil}
         @mode      = :insert
         @direction = :down
+        @engine    = engine
       end
 
 
@@ -146,6 +154,14 @@ module Baumwandler
         self
       end
 
+
+      #
+      # this sets the node manipulation mode
+      #
+      def mode(mode)
+        @mode = mode
+        self
+      end
 
       #
       # This sets the discard mode
@@ -186,6 +202,14 @@ module Baumwandler
         self
       end
 
+      #
+      # This sets the setfirst mode
+      #
+      # @return [type] [description]
+      def setfirst
+        @mode = :setfirst
+        self
+      end
       #
       # This sets the rule body
       # @param  &block [type] [description]
@@ -253,6 +277,10 @@ module Baumwandler
         @subjects
       end
 
+      def get_engine
+        @engine
+      end
+
     end
 
 
@@ -271,7 +299,7 @@ module Baumwandler
     # @return [type] [description]
     def rule(subjects)
       subject_list = [subjects].flatten
-      r = Rule.new(subject_list)
+      r = Rule.new(subject_list, self)
       subject_list.flatten.each{|s|
         @rules[s] ||= Array.new
         @rules[s] << r
@@ -299,44 +327,50 @@ module Baumwandler
       #
 
       process_results=proc{|rule, result, node|
-        case rule.get_mode
-        when :insert
-          node.set!(result)
-        when :add
-          node.setlast!(result)
-        else
-          raise "unsupported rule mode: #{rule.get_mode}"
+        if node.gid
+          case rule.get_mode
+          when :insert
+            node.set!(result)
+          when :add
+            node.setlast!(result)
+          when :setfirst
+            node.setfirst!(result)
+          when :discard
+          else
+            raise "unsupported rule mode: #{rule.get_mode}"
+          end
         end
       }
 
-      rule=_find_rule(node, :down)
-      #require 'pry';binding.pry
-      puts "#{node.gid}(#{rule.get_subjects}): #{rule.get_direction}, #{rule.get_mode})"
+      # todo: support special rules for Ruby object
+      # 
+      if node.gid
+        rule=_find_rule(node, :down)
 
-      # evaluate downrule
-      result = [rule.get_body.call(node)].flatten#.map{|n| n._bwclone}
-      #require 'pry';binding.pry
-      # process the results
-      process_results.call(rule, result, node)
+        #$log.debug "#{node.gid}(#{rule.get_subjects}): #{rule.get_direction}, #{rule.get_mode})"
 
-      #transform the result
-      node.contents.select{|n|n.class==node.class}.each{|node|
-        #puts "#{node.gid}:"
-        #require 'pry';binding.pry
-        transform(node)
-      }
+        # evaluate downrule
+        result = [rule.get_body.call(node)].flatten
 
-      # find uprule
-      rule = _find_rule(node, :up)
+        process_results.call(rule, result, node)
 
-      if rule
-        # evaluate uprule
-        result = [rule.get_body.call(node)].flatten#.map{|n| n._bwclone}
+        #transform the result
+        #node.contents.select{|n|n.class==node.class}.each{|subnode|
+        node.contents.each{|subnode|
+          transform(subnode)
+        } if node.gid
 
-        # process rule
-        [process_results.call(rule, result, node)].flatten
+        # find uprule
+        rule = _find_rule(node, :up)
+
+        if rule
+          # evaluate uprule
+          result = [rule.get_body.call(node)].flatten#.map{|n| n._bwclone}
+
+          # process rule
+          [process_results.call(rule, result, node)].flatten
+        end
       end
-
       node
 
     end
@@ -371,4 +405,3 @@ end
 class Object
   include Baumwandler::Object
 end
-
