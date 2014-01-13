@@ -12,40 +12,21 @@ module Baumwandler
   # This module contains methods which make the predecessor links
   # applicable to any object as source.
   #
+  # Injected class variables
+  # 
+  # _bw_link - the predecessor link
+  # _bw_rank - the rank
+  # 
   # @author [beweiche]
   #
   module Object
-
-    #
-    # This clones an object and maintains the
-    # node links
-    #
-    # Note that this is a deep clone!
-    # This is likely to be redefined for
-    # Impelmentation of non terminal nodes
-    #
-    # @return [Object] [The cloned object]
-    def _bwclone
-      self.clone._bwfrom(self)
-    end
-
-    # todo: handle Block
-    # todo: manage conversion to a node if properties are specified
-    def _bwprops(gid = nil, attributes = nil, &block)
-      if self.gid
-        result = self.node(gid || self.gid, attributes||self.attributes, &block)._bwfrom(self)
-      else
-        result=self.clone rescue self
-      end
-      result
-    end
 
     #
     # Ths sets the predecessor link
     # @param  object [Object] The node linked object
     #
     # @return [Object] The object itself to allow chaining
-    def _bwfrom(object)
+    def _bw_set_p(object)
       @_bw_link = object
       self
     end
@@ -54,17 +35,73 @@ module Baumwandler
     # This yields the predecessor object
     #
     # @return [Object] The  node linked object
-    def _bwp
+    def _bw_p
       @_bw_link
     end
 
+
+
+    #########################
+    # methods to be specialized lated
+
+
+
+
+    # 
+    # Set the parent of this node
+    # 
+    # Likely to be redefined in underlying Node implementations
+    # 
+    # This supports that any object can be part of a Baumwandler Tree
+    # 
+    # @param  node [Node] The parent of that node
+    # 
+    # @return [Node] The node itself
+    def _bw_set_parent(node)
+      @_bw_parent = node
+      self
+    end
+
+
+
+    # 
+    # This yields the parent of this node
+    # 
+    # Likely to be redefined in underlying Node implementations
+    # 
+    # This supports that any object can be part of a Baumwandler Tree
+    # 
+    # @return [Node] The parent node
+    def _bw_parent
+      @_bw_parent
+    end
+
+    # 
+    # This yields the generic identifier of this node
+    # 
+    # Likely to be redefined in underlying Node implementations.
+    # 
+    # This supports that any object can be part of a Baumwandler Tree
+    # 
+    # @return [type] [description]
+    def _bw_gid
+      nil
+    end
+
+
+    ####################################################################
+    # 
+    # convenience Methods
+    # 
+    # todo: maybe place this in another module
+    # 
     #
     # This yiels a list of all predecessor objects
     #
     # @return [Array] The list of node linked objects
-    def _bwa
-      p = _bwp
-      a = p._bwa if p
+    def _bw_a
+      p = _bw_p
+      a = p._bw_a if p
       [p, a].flatten.compact
     end
 
@@ -73,18 +110,9 @@ module Baumwandler
     # mainly the node in the "source tree"
     #
     # @return [Object] The root node link
-    def _bwr
-      _bwa[-1]
+    def _bw_r
+      _bw_a[-1]
     end
-
-    #
-    # This yields nil unless superseeded by a paticular implementation
-    # todo: this ensures, that the the routines in transformer also work
-    # for non baumwandler Nodes
-    def gid
-      nil
-    end
-
 
     # 
     # This indicates if the result of a query
@@ -101,22 +129,41 @@ module Baumwandler
       return self
     end
 
+    # set the properties of a give node. If the node has no _bw_gid
+    # then it is cloned only
+    # 
+    # todo: handle Block
+    # todo: manage conversion to a node if properties are specified
+    def _bw_copy(gid = nil, attributes = nil, &block)
+      if self._bw_gid
+        result = self._bw_node(gid || self.gid, attributes||self.attributes, &block)._bw_set_p(self)
+      else
+        result = self.clone rescue self
+        result._bw_set_p(self)
+      end
+      result
+    end
+
 
 
     # included Attributes as getter and setter
 
-    def _bw_parent=(node)
-      @_bw_parent=node
+
+
+    # 
+    # Set the position in the parent object
+    # 0 is the first position
+    # 
+    # @return [Node] The node itself
+    def _bw_set_rank(rank)
+      @_bw_rank = rank
+      self
     end
 
-    def _bw_parent
-      @_bw_parent
-    end
-
-    def _bw_rank=(rank)
-      @_bw_rank=rank
-    end
-
+    # 
+    # Returns the position in the parent object
+    # 
+    # @return [Integer] The position in the parent object
     def _bw_rank
       @_bw_rank
     end
@@ -344,7 +391,7 @@ module Baumwandler
 
       # todo: support special rules for Ruby object
       # 
-      if node.gid
+      if node._bw_gid
         rule=_find_rule(node, :down)
 
         #$log.debug "#{node.gid}(#{rule.get_subjects}): #{rule.get_direction}, #{rule.get_mode})"
@@ -358,7 +405,7 @@ module Baumwandler
         #node.contents.select{|n|n.class==node.class}.each{|subnode|
         node.contents.each{|subnode|
           transform(subnode)
-        } if node.gid
+        } if node._bw_gid
 
         # find uprule
         rule = _find_rule(node, :up)

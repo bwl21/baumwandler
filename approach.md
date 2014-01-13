@@ -11,14 +11,7 @@
 
 # Approach
 
-### properties of a node in MetaMorphosis
 
-* nodename
-* attributes
-* contents
-* predecessor
-* parent
-* type [node, pi, string, real, integer, object]
 
 ## the general approach
 
@@ -103,12 +96,14 @@ class Predecessor <<M, Module>> {
 
 	Predecessor _bw_p()
 	Predecessor _bw_set_p()
+
 	__to be specialized__
 	Predecessor _bw_set_parent()
 	Predecessor _bw_parent()
 	String _bw_gid()
+
 	__convenience Methods__
-	Predecessor _bw_clone()
+	Predecessor _bw_copy()
 	Array _bw_a()
 	Predecessor _bw_r()
 	Array | nil _bw?()
@@ -132,28 +127,29 @@ namespace Baumwandler_interface {
     	__convenience methods__
 		Node _bw_node(){}
 	    Predecessor _bw_set_props()
+	    __factory methods__
+	    {static}Node _bw_node(){}
     }
 }
-
 
 namespace Baumwandler_nokogiri {
 	class Node<extends Object>{
 	}
-	class Nodefactory
-
+	class Nokogiri_XML_Node
+    
+    Node --|> Nokogiri_XML_Node
 	Node --|> "implements" Baumwandler_interface.BwNodeInterface
 }
 
 namespace Baumwandler_native {
 	class Node<extends Object>
-	class Nodefactory
 
 	Node --|> "implements" Baumwandler_interface.BwNodeInterface
 }
 
 
 
-@endum
+@enduml
 
 ~~~~
 

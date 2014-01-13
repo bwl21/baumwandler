@@ -10,8 +10,79 @@ module Baumwandler
   #
   # @author [beweiche]
   #
+  #
   class Node
-    attr_accessor :gid, :contents, :type, :parent, :attributes
+    #
+    # This inserts a list of objects as content. Thereby
+    # the previous content is replaced.
+    #
+    # @param  contents [Array] This is the list of new content
+    #
+    # @return [node] The node itself to allow chaining
+    def set!(contents)
+      pcontents = _prepare_content(contents)
+      @contents = pcontents
+      _treesync
+      self
+    end
+
+
+    #
+    # This prepends a list of objects to the content
+    # @param  contents [Array] The content to be prepended
+    #
+    # @return [node] The node itself to allow chaining
+    def setfirst!(contents)
+      pcontents = _prepare_content(contents)
+      @contents.unshift *(pcontents)
+      _treesync
+      self
+    end
+
+    #
+    # This appends a list of objects to the content
+    # @param  contents [Array] the content to be appended
+    #
+    # @return [node] The node itself to allow chaining
+    def setlast!(contents)
+      pcontents = _prepare_content(contents)
+      @contents.push *(pcontents)
+      _treesync
+      self
+    end
+
+    #
+    # This as well creates a new node. It is provided as a convenience method
+    #
+    # todo: do we really need this?
+    #
+    # @param  gid [type] [description]
+    # @param  attributes={} [type] [description]
+    # @param  &block [type] [description]
+    #
+    # @return [type] [description]
+    def _bw_node(gid, attributes={}, &block)
+      self.class.new(gid, type=:node, attributes, &block)
+    end
+
+
+    #
+    # redefine _bw_gid
+    #
+    # @return [String] The generic Identifier
+    def _bw_gid
+      @gid
+    end
+  end
+
+
+  #
+  # This is the specific part of the implementation of Node
+  #
+  # @author [beweiche]
+  #
+  class Node
+    attr_accessor :gid, :contents,  :attributes
 
     #
     # This retrieves a particluar attribute
@@ -30,50 +101,11 @@ module Baumwandler
     # @param  &block [Lambda] Result of this block is used as contents of the node
     #
     # @return [Node] it returns the neew node
-    def self.node(gid, attributes={}, &block)
+    def self._bw_node(gid, attributes={}, &block)
       Node.new(gid, type=:node, attributes, &block)
     end
 
 
-    #
-    # This as well creates a new node. It is provided as a convenience method
-    #
-    # todo: do we really need this?
-    #
-    # @param  gid [type] [description]
-    # @param  attributes={} [type] [description]
-    # @param  &block [type] [description]
-    #
-    # @return [type] [description]
-    def node(gid, attributes={}, &block)
-      Node.new(gid, type=:node, attributes, &block)
-    end
-
-
-    #
-    # This appends a list of objects to the content
-    # @param  contents [Array] the content to be appended
-    #
-    # @return [node] The node itself to allow chaining
-    def setlast!(contents)
-      pcontents = _prepare_content(contents)
-      @contents.push *(pcontents)
-      _treesync
-      self
-    end
-
-
-    #
-    # This prepends a list of objects to the content
-    # @param  contents [Array] The content to be prepended
-    #
-    # @return [node] The node itself to allow chaining
-    def setfirst!(contents)
-      pcontents = _prepare_content(contents)
-      @contents.unshift *(pcontents)
-      _treesync
-      self
-    end
 
 
     #
@@ -87,19 +119,6 @@ module Baumwandler
     end
 
 
-    #
-    # This inserts a list of objects as content. Thereby
-    # the previous content is replaced.
-    #
-    # @param  contents [Array] This is the list of new content
-    #
-    # @return [node] The node itself to allow chaining
-    def set!(contents)
-      pcontents = _prepare_content(contents)
-      @contents = pcontents
-      _treesync
-      self
-    end
 
     #
     # This alters the entire node.
@@ -156,7 +175,7 @@ module Baumwandler
     def to_xml(indent="", options={mode: :default})
       attlist=attributes.map{|k,v| "#{k}=\"#{v}\""}.unshift("").join(" ")
       pre = ""
-      pre = "<!-- $#{object_id} (#{[_bwa].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
+      pre = "<!-- $#{object_id} (#{[_bw_a].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
       [
         "\n#{indent}<#{gid}#{attlist}>#{pre}",
         contents.map{|c|
@@ -201,22 +220,6 @@ module Baumwandler
     #   self.node(gid, attributes)._bwfrom(p)
     # end
 
-    #
-    # This injects a Predecessor link
-    #
-    # @param  node [object] The object representing the predecessor
-    #
-    # @return [Node] The object itself
-    # def _set_bwfrom(node)
-    #   @bwfrom=node
-    #   self
-    # end
-
-
-    # def _get_bwfrom
-    #   @bwfrom
-    # end
-
     private
 
     def _prepare_block(block)
@@ -225,8 +228,8 @@ module Baumwandler
 
     def _prepare_content(contents)
       contents.map{|n|
-        if n._bw_parent && n.gid
-          r=n._bwprops
+        if n._bw_parent && n._bw_gid
+          r = n._bw_copy()
         else
           r=n
         end
@@ -236,8 +239,8 @@ module Baumwandler
 
     def _treesync
       @contents.each_with_index{|node, index|
-        node._bw_rank = index
-        node._bw_parent = self
+        node._bw_set_rank(index)
+        node._bw_set_parent(self)
       }
     end
 

@@ -2,7 +2,7 @@
 
 require 'baumwandler'
 
-describe "Baumwandler::Transformer::Rule", exp: false do
+describe "Baumwandler::Transformer::Rule", exp: true do
 
   before(:all) do
     @e=Baumwandler::Transformer.new
@@ -14,7 +14,6 @@ describe "Baumwandler::Transformer::Rule", exp: false do
     end
 
     @e.get_rules[:a].first.get_body.call("foobar").should=="this is foobar"
-
   end
 
   it "it supports the most complex form of a transformation rule" do |this|
@@ -47,25 +46,25 @@ describe "Baumwandler::Transformer::Rule", exp: false do
   end
 end
 
-describe "Baumwandler::Tranformer.transform", exp:false do
+describe "Baumwandler::Tranformer.transform", exp:true do
 
   before :all do
-    @bw=Baumwandler::Node # to be used as node factory
-    @e=Baumwandler::Transformer.new # the first engine
-    @e2=Baumwandler::Transformer.new # the second engine
+    @bw_factory = Baumwandler::Node # to be used as node factory
+    @e          = Baumwandler::Transformer.new # the first engine
+    @e2         = Baumwandler::Transformer.new # the second engine
 
     @e.rule(:CHAPTER).body do |my_chapter|
-      cc= my_chapter._bwp.next.take_while{|i|
-      	i.gid != my_chapter._bwp.gid
-      }.map{|my_p| my_p._bwprops(:P)}
+      cc= my_chapter._bw_p.next.take_while{|i|
+      	i.gid != my_chapter._bw_p.gid
+      }.map{|my_p| my_p._bw_copy(:P)}
 
       a=[
-        @bw.node(:"LONG-NAME"){|n|
-          @bw.node(:"L-5", L:"DE"){
-          my_chapter._bwp.contents #.map{|i| i._bwprops}
+        @bw_factory._bw_node(:"LONG-NAME"){|n|
+          @bw_factory._bw_node(:"L-5", L:"DE"){
+          my_chapter._bw_p.contents #.map{|i| i._bw_copy}
          }
         },
-        @bw.node(:"P"),
+        @bw_factory._bw_node(:"P"),
 
         cc
       ].flatten
@@ -82,9 +81,9 @@ describe "Baumwandler::Tranformer.transform", exp:false do
     }
 
     @e.rule(:P).body do |this|
-      a=@bw.node(:"L-1", L:"DE"){
-        r=["(parent id #{this.parent.object_id})",
-           this.contents._bw? || this._bwp && this._bwp.contents
+      a=@bw_factory._bw_node(:"L-1", L:"DE"){
+        r=["(parent id #{this._bw_parent.object_id})",
+           this.contents._bw? || this._bw_p && this._bw_p.contents
            ].flatten
         r
       }
@@ -92,57 +91,58 @@ describe "Baumwandler::Tranformer.transform", exp:false do
     end
 
     @e.rule(:DOCUMENT).body do |this|
-      a=this._bwp.contents.select{|i| i.gid == :h1}
-      .map{|i| i._bwprops(:CHAPTER)}
+      a=this._bw_p.contents.select{|i| i.gid == :h1}
+      .map{|i| i._bw_copy(:CHAPTER)}
       a
     end
 
 
     @e.rule(:hugo).body do |this|
-      ["{added by rule :hugo}", (this._bwp || this).contents]
+      ["{added by rule :hugo}", (this._bw_p || this).contents]
     end
 
     @e.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bwp.contents if this._bwp
-      #.map{|i|i._bwprops} if this._bwp
+      r=this._bw_p.contents if this._bw_p
+      #.map{|i|i._bw_copy} if this._bw_p
       r
     end
 
     @e2.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bwp.contents if this._bwp
-      #.map{|i|i._bwprops} if this._bwp
+      r=this._bw_p.contents if this._bw_p
+      #.map{|i|i._bw_copy} if this._bw_p
       r
     end
 
-    @source=@bw.node(:source){|a|
+    @source=@bw_factory._bw_node(:source){|a|
       [
-        @bw.node(:h1){["das ist überschrift 1",@bw.node(:hugo){"inhalt hugo"}]},
-        @bw.node(:p){"der erste paragraph"},
-        @bw.node(:p){"der zweite paragraph"},
-        @bw.node(:p){"der dritte paragraph"},
-        @bw.node(:h1){"das ist kapitel 2"},
-        @bw.node(:p){"der vierte paragraph"},
-        @bw.node(:p){"der fünfte paragraph"},
-        @bw.node(:p){["der sechste paragraph"]},
-        @bw.node(:h1){"das ist kapitel 3"},
+        @bw_factory._bw_node(:h1){["das ist überschrift 1",
+        @bw_factory._bw_node(:hugo){"inhalt hugo"}]},
+        @bw_factory._bw_node(:p){"der erste paragraph"},
+        @bw_factory._bw_node(:p){"der zweite paragraph"},
+        @bw_factory._bw_node(:p){"der dritte paragraph"},
+        @bw_factory._bw_node(:h1){"das ist kapitel 2"},
+        @bw_factory._bw_node(:p){"der vierte paragraph"},
+        @bw_factory._bw_node(:p){"der fünfte paragraph"},
+        @bw_factory._bw_node(:p){["der sechste paragraph"]},
+        @bw_factory._bw_node(:h1){"das ist kapitel 3"},
 
     ]}
 
     @source_ref=@source.to_s
 
-    @target1 = @bw.node(:DOCUMENT)._bwfrom(@source) # yields {chapter:][]}
+    @target1 = @bw_factory._bw_node(:DOCUMENT)._bw_set_p(@source) # yields {chapter:][]}
       	#puts "before first transformation", @source.to_s
 
     @e.transform(@target1)
       	#puts "after first transformation", @source.to_s, @target1.to_s
-    @target2 = @bw.node(:DOCUMENT)._bwfrom(@target1)
+    @target2 = @bw_factory._bw_node(:DOCUMENT)._bw_set_p(@target1)
     @e2.transform(@target2)
   end
 
   it "performs transformation of nodes" do
-    #puts @target1.to_s
+    #puts @ta_factoryrget1.to_s
     #puts @source.to_s
 
     @target1.contents.first.gid.should==:"CHAPTER"
@@ -184,26 +184,25 @@ describe "Baumwandler::Object", exp:false do
 
   it "can find the predecessor" do
     root    = "this is root"
-    first   = "this the first derivable"._bwfrom(root)
-    second  = "this is the second derivable"._bwfrom(first)
+    first   = "this the first derivable"._bw_set_p(root)
+    second  = "this is the second derivable"._bw_set_p(first)
     number  = 1
-    number._bwfrom(root) # it also works with fixnums
+    number._bw_set_p(root) # it also works with fixnums
 
 
     #we clone and establish link later
     cloned_root = root.clone
-    cloned_root._bwfrom(root)
+    cloned_root._bw_set_p(root)
 
     #we clone by baumwandler
-    cloned_clone = cloned_root._bwclone
+    cloned_clone = cloned_root._bw_copy
 
-    first._bwp.should == root
-    second._bwp._bwp.should == root
-    second._bwr.should == root
-    cloned_root._bwp.should == root
-
-    cloned_clone._bwa.should == [cloned_root, root]
-    number._bwp.should == root
+    first._bw_p.should == root
+    second._bw_p._bw_p.should == root
+    second._bw_r.should == root
+    cloned_root._bw_p.should == root
+    cloned_clone._bw_a.should == [cloned_root, root]
+    number._bw_p.should == root
   end
 end
 
