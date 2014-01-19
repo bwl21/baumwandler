@@ -54,17 +54,17 @@ describe "Baumwandler::Tranformer.transform", exp:true do
     @e2         = Baumwandler::Transformer.new # the second engine
 
     @e.rule(:CHAPTER).body do |my_chapter|
-      cc= my_chapter._bw_p.next.take_while{|i|
-      	i.gid != my_chapter._bw_p.gid
-      }.map{|my_p| my_p._bw_copy(:P)}
+      cc= my_chapter.bw_p.next.take_while{|i|
+      	i.gid != my_chapter.bw_p.gid
+      }.map{|my_p| my_p.bw_copy(:P)}
 
       a=[
-        @bw_factory._bw_node(:"LONG-NAME"){|n|
-          @bw_factory._bw_node(:"L-5", L:"DE"){
-          my_chapter._bw_p.contents #.map{|i| i._bw_copy}
+        @bw_factory.bw_node(:"LONG-NAME"){|n|
+          @bw_factory.bw_node(:"L-5", L:"DE"){
+          my_chapter.bw_p.contents #.map{|i| i.bw_copy}
          }
         },
-        @bw_factory._bw_node(:"P"),
+        @bw_factory.bw_node(:"P"),
 
         cc
       ].flatten
@@ -81,9 +81,9 @@ describe "Baumwandler::Tranformer.transform", exp:true do
     }
 
     @e.rule(:P).body do |this|
-      a=@bw_factory._bw_node(:"L-1", L:"DE"){
-        r=["(parent id #{this._bw_parent.object_id})",
-           this.contents._bw? || this._bw_p && this._bw_p.contents
+      a=@bw_factory.bw_node(:"L-1", L:"DE"){
+        r=["(parent id #{this.bw_parent.object_id})",
+           this.contents._bw? || this.bw_p && this.bw_p.contents
            ].flatten
         r
       }
@@ -91,53 +91,53 @@ describe "Baumwandler::Tranformer.transform", exp:true do
     end
 
     @e.rule(:DOCUMENT).body do |this|
-      a=this._bw_p.contents.select{|i| i.gid == :h1}
-      .map{|i| i._bw_copy(:CHAPTER)}
+      a=this.bw_p.contents.select{|i| i.gid == :h1}
+      .map{|i| i.bw_copy(:CHAPTER)}
       a
     end
 
 
     @e.rule(:hugo).body do |this|
-      ["{added by rule :hugo}", (this._bw_p || this).contents]
+      ["{added by rule :hugo}", (this.bw_p || this).contents]
     end
 
     @e.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bw_p.contents if this._bw_p
-      #.map{|i|i._bw_copy} if this._bw_p
+      r=this.bw_p.contents if this.bw_p
+      #.map{|i|i.bw_copy} if this.bw_p
       r
     end
 
     @e2.rule(:"!default").add.body do |this|
       r=[]
-      r=this._bw_p.contents if this._bw_p
-      #.map{|i|i._bw_copy} if this._bw_p
+      r=this.bw_p.contents if this.bw_p
+      #.map{|i|i.bw_copy} if this.bw_p
       r
     end
 
-    @source=@bw_factory._bw_node(:source){|a|
+    @source=@bw_factory.bw_node(:source){|a|
       [
-        @bw_factory._bw_node(:h1){["das ist überschrift 1",
-        @bw_factory._bw_node(:hugo){"inhalt hugo"}]},
-        @bw_factory._bw_node(:p){"der erste paragraph"},
-        @bw_factory._bw_node(:p){"der zweite paragraph"},
-        @bw_factory._bw_node(:p){"der dritte paragraph"},
-        @bw_factory._bw_node(:h1){"das ist kapitel 2"},
-        @bw_factory._bw_node(:p){"der vierte paragraph"},
-        @bw_factory._bw_node(:p){"der fünfte paragraph"},
-        @bw_factory._bw_node(:p){["der sechste paragraph"]},
-        @bw_factory._bw_node(:h1){"das ist kapitel 3"},
+        @bw_factory.bw_node(:h1){["das ist überschrift 1",
+        @bw_factory.bw_node(:hugo){"inhalt hugo"}]},
+        @bw_factory.bw_node(:p){"der erste paragraph"},
+        @bw_factory.bw_node(:p){"der zweite paragraph"},
+        @bw_factory.bw_node(:p){"der dritte paragraph"},
+        @bw_factory.bw_node(:h1){"das ist kapitel 2"},
+        @bw_factory.bw_node(:p){"der vierte paragraph"},
+        @bw_factory.bw_node(:p){"der fünfte paragraph"},
+        @bw_factory.bw_node(:p){["der sechste paragraph"]},
+        @bw_factory.bw_node(:h1){"das ist kapitel 3"},
 
     ]}
 
     @source_ref=@source.to_s
 
-    @target1 = @bw_factory._bw_node(:DOCUMENT)._bw_set_p(@source) # yields {chapter:][]}
+    @target1 = @bw_factory.bw_node(:DOCUMENT).bw_set_p(@source) # yields {chapter:][]}
       	#puts "before first transformation", @source.to_s
 
     @e.transform(@target1)
       	#puts "after first transformation", @source.to_s, @target1.to_s
-    @target2 = @bw_factory._bw_node(:DOCUMENT)._bw_set_p(@target1)
+    @target2 = @bw_factory.bw_node(:DOCUMENT).bw_set_p(@target1)
     @e2.transform(@target2)
   end
 
@@ -184,25 +184,25 @@ describe "Baumwandler::Object", exp:false do
 
   it "can find the predecessor" do
     root    = "this is root"
-    first   = "this the first derivable"._bw_set_p(root)
-    second  = "this is the second derivable"._bw_set_p(first)
+    first   = "this the first derivable".bw_set_p(root)
+    second  = "this is the second derivable".bw_set_p(first)
     number  = 1
-    number._bw_set_p(root) # it also works with fixnums
+    number.bw_set_p(root) # it also works with fixnums
 
 
     #we clone and establish link later
     cloned_root = root.clone
-    cloned_root._bw_set_p(root)
+    cloned_root.bw_set_p(root)
 
     #we clone by baumwandler
-    cloned_clone = cloned_root._bw_copy
+    cloned_clone = cloned_root.bw_copy
 
-    first._bw_p.should == root
-    second._bw_p._bw_p.should == root
-    second._bw_r.should == root
-    cloned_root._bw_p.should == root
-    cloned_clone._bw_a.should == [cloned_root, root]
-    number._bw_p.should == root
+    first.bw_p.should == root
+    second.bw_p.bw_p.should == root
+    second.bw_r.should == root
+    cloned_root.bw_p.should == root
+    cloned_clone.bw_a.should == [cloned_root, root]
+    number.bw_p.should == root
   end
 end
 

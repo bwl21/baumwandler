@@ -61,16 +61,16 @@ module Baumwandler
     # @param  &block [type] [description]
     #
     # @return [type] [description]
-    def _bw_node(gid, attributes={}, &block)
+    def bw_node(gid, attributes={}, &block)
       self.class.new(gid, type=:node, attributes, &block)
     end
 
 
     #
-    # redefine _bw_gid
+    # redefine bw_gid
     #
     # @return [String] The generic Identifier
-    def _bw_gid
+    def bw_gid
       @gid
     end
   end
@@ -101,7 +101,7 @@ module Baumwandler
     # @param  &block [Lambda] Result of this block is used as contents of the node
     #
     # @return [Node] it returns the neew node
-    def self._bw_node(gid, attributes={}, &block)
+    def self.bw_node(gid, attributes={}, &block)
       Node.new(gid, type=:node, attributes, &block)
     end
 
@@ -151,7 +151,7 @@ module Baumwandler
     # @return [Array] The list of left siblings
     def previous
       r = nil
-      r = _bw_parent.contents[0 .. self._bw_rank - 1].reverse if _bw_parent
+      r = bw_parent.contents[0 .. self.bw_rank - 1].reverse if bw_parent
       [r].flatten.compact
     end
 
@@ -161,7 +161,7 @@ module Baumwandler
     # @return [Array] The list of right siblings
     def next
       r = nil
-      r = _bw_parent.contents[self._bw_rank + 1 .. -1] if _bw_parent
+      r = bw_parent.contents[self.bw_rank + 1 .. -1] if bw_parent
       [r].flatten.compact
     end
 
@@ -175,7 +175,7 @@ module Baumwandler
     def to_xml(indent="", options={mode: :default})
       attlist=attributes.map{|k,v| "#{k}=\"#{v}\""}.unshift("").join(" ")
       pre = ""
-      pre = "<!-- $#{object_id} (#{[_bw_a].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
+      pre = "<!-- $#{object_id} (#{[bw_a].flatten.map{|i|i.object_id}.join("|")}) -->"  if options[:mode]==:debug
       [
         "\n#{indent}<#{gid}#{attlist}>#{pre}",
         contents.map{|c|
@@ -228,8 +228,8 @@ module Baumwandler
 
     def _prepare_content(contents)
       contents.map{|n|
-        if n._bw_parent && n._bw_gid
-          r = n._bw_copy()
+        if n.bw_parent && n.bw_gid
+          r = n.bw_copy()
         else
           r=n
         end
@@ -239,8 +239,8 @@ module Baumwandler
 
     def _treesync
       @contents.each_with_index{|node, index|
-        node._bw_set_rank(index)
-        node._bw_set_parent(self)
+        node.bw_set_rank(index)
+        node.bw_set_parent(self)
       }
     end
 

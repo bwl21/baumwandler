@@ -46,7 +46,7 @@ Even if Baumwandler should work with any kind of object, we create an interface 
 	_bwfrom(node)
 	:	maintain the node link to the previous tree
 
-	_bw_setprops(){| |}
+	bw_setprops(){| |}
 	:	set the Baumwandlerproperties of a node
 
 		creates a new node with the same properties as the subject, no content, but predecessorlink
@@ -94,41 +94,41 @@ class Object
 class Predecessor <<M, Module>> {
 	Predecessor @object
 
-	Predecessor _bw_p()
-	Predecessor _bw_set_p()
+	Predecessor bw_p()
+	Predecessor bw_set_p()
 
 	__to be specialized__
-	Predecessor _bw_set_parent()
-	Predecessor _bw_parent()
-	String _bw_gid()
+	Predecessor bw_set_parent()
+	Predecessor bw_parent()
+	String bw_gid()
 
 	__convenience Methods__
-	Predecessor _bw_copy()
-	Array _bw_a()
-	Predecessor _bw_r()
+	Predecessor bw_copy()
+	Array bw_a()
+	Predecessor bw_r()
 	Array | nil _bw?()
-	Integer _bw_rank=
-	Integer _bw_rank
+	Integer bw_rank=
+	Integer bw_rank
 }
 class Object
 class Transformer
 
 namespace Baumwandler_interface {
 	class BwNodeInterface<<M, Module>>{
-    	Node _bw_set!()
-    	Node _bw_setfirst!()
-    	Node _bw_setlast!()
-    	Node _bw_replace!()
-    	Array _bw_contents()
+    	Node bw_set!()
+    	Node bw_setfirst!()
+    	Node bw_setlast!()
+    	Node bw_replace!()
+    	Array bw_contents()
     	__specialize Predecessor__
-    	Node _bw_setprops()
-    	Node _bw_parent()
-    	Node _bw_gid
+    	Node bw_setprops()
+    	Node bw_parent()
+    	Node bw_gid
     	__convenience methods__
-		Node _bw_node(){}
-	    Predecessor _bw_set_props()
+		Node bw_node(){}
+	    Predecessor bw_set_props()
 	    __factory methods__
-	    {static}Node _bw_node(){}
+	    {static}Node bw_node(){}
     }
 }
 
